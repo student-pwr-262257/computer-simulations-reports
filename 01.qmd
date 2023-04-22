@@ -1,0 +1,31 @@
+---
+date: today
+date-format: long
+title: Computer Simulations
+subtitle: Report 1
+authors:
+- name: Jakub Kaczor
+  email: 262257@student.pwr.edu.pl
+  affiliations:
+  - name: Wrocław University of Science and Technology
+    city: Wrocław
+- name: Karolina Jonczyk
+  affiliations:
+  - name: Wrocław University of Science and Technology
+    city: Wrocław
+
+callout-appearance: simple
+---
+
+# Statistics
+
+In the following work, the authors are going to assess the implemented
+methods by various means. Descriptive statistics are one of them. Here,
+they present the implementation of each.
+
+```{julia}
+"Compute arithmetic mean over the elements of an array"
+function mean(A::AbstractArray)
+   sum(A) / length(A)
+end
+```
