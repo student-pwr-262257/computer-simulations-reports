@@ -29,3 +29,105 @@ function mean(A::AbstractArray)
    sum(A) / length(A)
 end
 ```
+
+# The Ziggurat Method
+
+There is some peculiarity with using this method with distributions having
+the support being an interval not beginning in $0$. This is because in the
+algorithm there are points sampled from uniform distribution over
+subintervals of the support, having the left ends in the left end of the
+support, only differing in right ends, corresponding to strips' right end
+coordinates. One would not want to make the algorithm depend on the
+distribution, so authors choose to shift the distribution specific
+functions, such as PDF, survival function, quantiles, so they take shifted
+values.
+
+## Example (Pareto distribution)
+
+It is easy to determine the area $A_{\text {tail}}$ of the tail, as it is
+given by the definition of the Pareto distribution. That is
+$$
+A_{\text {tail}} = \bar F = \begin {cases}
+   {\left(\frac {x_m} \alpha\right)}^\alpha, x_m > x,
+   1, x_m \leq x,
+\end {cases}
+$$
+where $x_m$ is a scale parameter and $\alpha$ is a shape parameter.
+
+### Implementation
+
+```{julia}
+import Roots: find_zero
+
+"""
+Return a Pareto distribution generator
+
+The returned generator uses the ziggurat method.
+"""
+function ParetoGenerator(shape, scale)
+   # Pareto specific functions
+   pdf(x) = (shape * scale^shape) / (x)^(shape + 1)
+   inverted_pdf(y) = (shape * scale^shape / y)^(1/(shape + 1))
+   tail(x) = x >= scale ? (scale / x)^shape : 1
+   # Used for inverse sampling from the tail
+   quantile(x) = scale * (1 - x)^(-1/shape)
+
+   # Determine the ziggurat's structure
+   step_points = Array{Float64}(undef, 256)
+   function to_be_zeroed(rightmost)
+      area = rightmost * pdf(rightmost) + tail(rightmost)
+      step_points[end] = rightmost
+      for i in lastindex(step_points)-1 : -1 : firstindex(step_points)+1
+         previous = step_points[i+1]
+         step_points[i] = inverted_pdf(area / previous + pdf(previous))
+      end
+      first = step_points[begin+1]
+      return area - first + first * pdf(first)
+   end
+
+   # Heuristic for finding the rightmost point
+   somewhere_far = quantile(255/256)
+   rightmost = find_zero(to_be_zeroed, somewhere_far)
+   area = rightmost * pdf(rightmost) + tail(rightmost)
+
+   for i ∈ lastindex(step_points)-1 : -1 : firstindex(step_points)+1
+      prev = step_points[i+1]
+      step_points[i] = inverted_pdf(area / prev + pdf(prev))
+   end
+   # The special value
+   step_points[begin] = pdf(rightmost) * rightmost / area
+   
+   () -> begin
+      while true
+         # Choose a strip
+         i = rand(UInt8) + 1
+         x = rand() * (step_points[i] - scale) + scale
+         if i != 1 && x <= step_points[i-1]
+            return x
+         end
+         # Choose from the tail
+         if i == 1
+            x = rand() * (rightmost - scale) + scale
+            if x <= step_points[end]
+               return x
+            end
+         end
+         if rand() * (pdf(step_points[i-1]) - pdf(step_points[i])) < pdf(x) - pdf(step_points[i])
+            return x
+         end
+      end
+   end
+end
+```
+```{julia}
+using Plots
+using Distributions
+
+d = Pareto(1, 1)
+gen = ParetoGenerator(1, 1)
+smpl = [gen() for _ in 1:10^6]
+
+histogram(smpl, normalize=true)
+plot!(0:0.01:5, x -> pdf(d, x))
+xlims!(0, 5)
+```
