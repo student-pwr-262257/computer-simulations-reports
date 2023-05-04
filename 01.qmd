@@ -32,15 +32,37 @@ end
 
 # The Ziggurat Method
 
+## Peculiarities
+
 There is some peculiarity with using this method with distributions having
-the support being an interval not beginning in $0$. This is because in the
-algorithm there are points sampled from uniform distribution over
-subintervals of the support, having the left ends in the left end of the
-support, only differing in right ends, corresponding to strips' right end
-coordinates. One would not want to make the algorithm depend on the
-distribution, so authors choose to shift the distribution specific
-functions, such as PDF, survival function, quantiles, so they take shifted
-values.
+the support being an interval not beginning in $0$. The original algorithm
+samples points from the uniform distribution over subintervals of the
+support, the subintervals having the left ends equal to $0$, only differing
+in right ends, corresponding to strips' right end coordinates. The authors
+see two solutions.
+
+One can try to translate the functions defining the distribution, so it is
+properly situated. The other comes down to altering the uniform sampling
+procedure, so the points are properly sampled from shifted intervals. The
+latter comes with the additional cost of addition and subtraction with each
+uniform sampling, but the former requires these only in the initial
+procedure of identifying the ziggurat's structure and one addition on
+returning the final realization. But this also requires one to transform
+the PDF and its inverse symbolically beforehand, so the user cannot blindly
+pass well-known functions to the general version of the algorithm. But in
+the other solution, one would also have to give a specification of uniform
+distributions to sample from (the shift parameter), so the authors settled
+down on the idea of transforming density, which is equivalent to composing
+it with a translation by a constant factor and finding the inverse.
+
+There is also one subtlety with a method showed in the article. During
+determination of the strips' coordinates by zeroing the $z$ function, for
+example by using bisection method, one has to evaluate it possibly at
+negative values, where it can be undefined. It happened in the case of the
+Pareto distribution in the following example. One can avoid it evaluating
+the $z$ function in the absolute values of points instead. The results may
+not be formally correct, but they are good in our example, so the authors
+settle on this solution.
 
 ## Example (Pareto distribution)
 
@@ -54,6 +76,10 @@ A_{\text {tail}} = \bar F = \begin {cases}
 $$
 where $x_m$ is a scale parameter and $\alpha$ is a shape parameter.
 
+In this case, the distribution's support is $[x_m, \infty]$. Therefore, in
+the beginning, the distribution specific functions are shifted by $x_m$
+parameter, as mentioned in @sec:Peculiarities.
+
 ### Implementation
 
 ```{julia}
@@ -65,28 +91,32 @@ Return a Pareto distribution generator
 The returned generator uses the ziggurat method.
 """
 function ParetoGenerator(shape, scale)
+   n_strips = 256
    # Pareto specific functions
-   pdf(x) = (shape * scale^shape) / (x)^(shape + 1)
-   inverted_pdf(y) = (shape * scale^shape / y)^(1/(shape + 1))
-   tail(x) = x >= scale ? (scale / x)^shape : 1
+   # Usual Pareto's PDF composed with translation
+   pdf(x) = (shape * scale^shape) / (x + scale)^(shape + 1)
+   inverted_pdf(y) = (shape * scale^shape / y)^(1/(shape + 1)) - scale
+   tail(x) = x >= 0 ? (scale / (x + scale))^shape : 1
    # Used for inverse sampling from the tail
-   quantile(x) = scale * (1 - x)^(-1/shape)
+   quantile(x) = scale * (1 - x)^(-1/shape) - scale
 
    # Determine the ziggurat's structure
-   step_points = Array{Float64}(undef, 256)
+   step_points = Array{Float64}(undef, n_strips)
    function to_be_zeroed(rightmost)
       area = rightmost * pdf(rightmost) + tail(rightmost)
       step_points[end] = rightmost
       for i in lastindex(step_points)-1 : -1 : firstindex(step_points)+1
          previous = step_points[i+1]
-         step_points[i] = inverted_pdf(area / previous + pdf(previous))
+         # `abs` prevents invalid values in `inverted_pdf`
+         height = area / abs(previous) + pdf(previous)
+         step_points[i] = inverted_pdf(height)
       end
       first = step_points[begin+1]
-      return area - first + first * pdf(first)
+      return area - first * (pdf(0) - pdf(first))
    end
 
-   # Heuristic for finding the rightmost point
-   somewhere_far = quantile(255/256)
+   # Initial guess
+   somewhere_far = quantile((n_strips-1)/n_strips)
    rightmost = find_zero(to_be_zeroed, somewhere_far)
    area = rightmost * pdf(rightmost) + tail(rightmost)
 
@@ -101,19 +131,19 @@ function ParetoGenerator(shape, scale)
       while true
          # Choose a strip
          i = rand(UInt8) + 1
-         x = rand() * (step_points[i] - scale) + scale
+         x = rand() * step_points[i]
          if i != 1 && x <= step_points[i-1]
-            return x
+            return x + scale
          end
          # Choose from the tail
          if i == 1
-            x = rand() * (rightmost - scale) + scale
+            x = rand() * rightmost
             if x <= step_points[end]
-               return x
+               return x + scale
             end
          end
          if rand() * (pdf(step_points[i-1]) - pdf(step_points[i])) < pdf(x) - pdf(step_points[i])
-            return x
+            return x + scale
          end
       end
    end
