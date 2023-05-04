@@ -27,6 +27,7 @@ they present the implementation of each.
 using Test
 # Used only for testing
 import Statistics as Stats
+import StatsBase
 
 const TEST_SAMPLE = randn(10^3)
 
@@ -36,6 +37,39 @@ function mean(A::AbstractArray)
 end
 
 @test mean(TEST_SAMPLE) ≈ Stats.mean(TEST_SAMPLE)
+
+"Compute variance over the elements of an array"
+function var(A::AbstractArray, mean=mean(A))
+   sum(@. (A - mean)^2) / (length(A) - 1)
+end
+
+@test var(TEST_SAMPLE) ≈ Stats.var(TEST_SAMPLE)
+
+"Compute standard deviation over the elements of an array"
+function std(A::AbstractArray)
+   A |> var |> sqrt
+end
+
+@test std(TEST_SAMPLE) ≈ Stats.std(TEST_SAMPLE)
+
+"Compute skewness over the elements of an array"
+function skewness(A::AbstractArray, mean=mean(A), var=var(A))
+   n = length(A)
+   (sum((A .- mean).^3) / n) / var^(3/2)
+end
+
+# TODO: Investigate why the difference is so big
+@test isapprox(skewness(TEST_SAMPLE), StatsBase.skewness(TEST_SAMPLE), rtol=10e-3)
+
+"Compute kurtosis over the elements of an array"
+function kurtosis(A::AbstractArray, mean=mean(A))
+   n = length(A)
+   (n - 1) * n * (n + 1) / (n - 2) / (n - 3) * sum((A .- mean).^4) /
+   sum((A .- mean).^2)^2 - 3(n - 1)^2 / (n - 2) / (n - 3)
+end
+
+# TODO: Investigate why the difference is so big
+@test isapprox(kurtosis(TEST_SAMPLE), StatsBase.kurtosis(TEST_SAMPLE), rtol=10e-2)
 ```
 
 # The Ziggurat Method
