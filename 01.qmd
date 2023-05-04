@@ -24,10 +24,18 @@ methods by various means. Descriptive statistics are one of them. Here,
 they present the implementation of each.
 
 ```{julia}
+using Test
+# Used only for testing
+import Statistics as Stats
+
+const TEST_SAMPLE = randn(10^3)
+
 "Compute arithmetic mean over the elements of an array"
 function mean(A::AbstractArray)
    sum(A) / length(A)
 end
+
+@test mean(TEST_SAMPLE) ≈ Stats.mean(TEST_SAMPLE)
 ```
 
 # The Ziggurat Method
