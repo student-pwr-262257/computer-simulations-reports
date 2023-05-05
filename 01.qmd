@@ -72,6 +72,101 @@ end
 @test isapprox(kurtosis(TEST_SAMPLE), StatsBase.kurtosis(TEST_SAMPLE), rtol=10e-1)
 ```
 
+```{julia}
+import Markdown
+import Plots
+import StatsPlots
+import Distributions as Dists
+
+struct GeneratorTestStatisticsError
+   distribution
+   mean
+   var
+   skewness
+   kurtosis
+end
+
+function GeneratorTestStatisticsError(distribution, sample)
+   GeneratorTestStatisticsError(
+      distribution,
+      mean(sample),
+      var(sample),
+      skewness(sample),
+      kurtosis(sample),
+   )
+end
+
+function Base.show(
+   io::IO,
+   mime::MIME"text/markdown",
+   generator_test_statistics::GeneratorTestStatisticsError
+)
+   distribution = generator_test_statistics.distribution
+   names = ["Statistic", "mean", "variance", "skewness", "kurtosis"]
+   absolute_errors = [
+      "Absolute error",
+      generator_test_statistics.mean - Dists.mean(distribution),
+      generator_test_statistics.var - Dists.var(distribution),
+      generator_test_statistics.skewness - Dists.skewness(distribution),
+      generator_test_statistics.kurtosis - Dists.kurtosis(distribution),
+   ]
+   theoretic_values = [
+      "Theoretic value",
+      Dists.mean(distribution),
+      Dists.var(distribution),
+      Dists.skewness(distribution),
+      Dists.kurtosis(distribution),
+   ]
+   rows = map(zip(names, absolute_errors, theoretic_values)) do (name, error, value)
+      [name, error, value]
+   end
+   md = Markdown.MD(Markdown.Table(rows, [:l, :l, :l]))
+   Base.show(io, mime, md)
+end
+
+struct GeneratorTestPlots
+   cdf
+   pdf
+   qq
+end
+
+function Base.show(io::IO, test_plots::GeneratorTestPlots)
+   p = Plots.plot(test_plots.cdf, test_plots.pdf, test_plots.qq)
+   Base.display(p)
+end
+
+struct GeneratorTest
+   statistics::GeneratorTestStatisticsError
+   plots::GeneratorTestPlots
+end
+
+function test_generator(distribution, generator, sample_size=10^3)
+   sample = [generator() for _ in 1:sample_size]
+   test_statistics = GeneratorTestStatisticsError(distribution, sample)
+   sample_ecdf = StatsBase.ecdf(sample)
+   cdf_plot = StatsPlots.plot(sample_ecdf, label="Empirical CDF")
+   Plots.plot!(cdf_plot, x -> Dists.cdf(distribution, x), label="Theoretic CDF")
+   Plots.title!(cdf_plot, "Cumulative distribution function")
+   Plots.xlabel!(cdf_plot, "Argument")
+   Plots.ylabel!(cdf_plot, "Value")
+
+
+   pdf_plot = Plots.histogram(sample, normalize=true, label="Histogram")
+   StatsPlots.plot!(x -> Dists.pdf(distribution, x), label="Theoretic density")
+   Plots.title!(pdf_plot, "Probability density function")
+   Plots.xlabel!(pdf_plot, "Argument")
+   Plots.ylabel!(pdf_plot, "Probability density")
+
+   qq_plot = StatsPlots.qqplot(distribution, sample)
+   Plots.title!(qq_plot, "Quantile-Quantile")
+   Plots.xlabel!(qq_plot, "Theoretic quantile")
+   Plots.ylabel!(qq_plot, "Empirical quantile")
+
+   test_plots = GeneratorTestPlots(cdf_plot, pdf_plot, qq_plot)
+   GeneratorTest(test_statistics, test_plots)
+end
+```
+
 # The Ziggurat Method
 
 ## Peculiarities
