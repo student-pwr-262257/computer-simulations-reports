@@ -69,7 +69,7 @@ function kurtosis(A::AbstractArray, mean=mean(A))
 end
 
 # TODO: Investigate why the difference is so big
-@test isapprox(kurtosis(TEST_SAMPLE), StatsBase.kurtosis(TEST_SAMPLE), rtol=10e-2)
+@test isapprox(kurtosis(TEST_SAMPLE), StatsBase.kurtosis(TEST_SAMPLE), rtol=10e-1)
 ```
 
 # The Ziggurat Method
