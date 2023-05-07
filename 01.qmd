@@ -213,6 +213,66 @@ test = test_generator(distribution, generator)
 display(test.plots); display(test.statistics)
 ```
 
+# Rejection sampling
+
+```{julia}
+function RejectionSamplingGenerator(pdf, aux_pdf, aux_gen, multiplier)
+   () -> begin
+      while true
+         x = aux_gen()
+         if (u = rand()) <= pdf(x) / (multiplier * aux_pdf(x))
+            return x
+         end
+      end
+   end
+end
+```
+
+## Continuous Example (Semicircle(1) with Uniform(-1, 1))
+
+```{julia}
+distribution = Dists.Semicircle(1)
+semicircle_pdf(x) = -1 <= x <= 1 ? 2/π * sqrt(1 - x^2) : 0
+uniform_pdf(x) = -1 <= x <= 1 ? 1 : 0
+generator = RejectionSamplingGenerator(
+   semicircle_pdf, uniform_pdf, () -> 2 * rand() - 1, 1
+)
+test = test_generator(distribution, generator)
+display(test.plots); display(test.statistics)
+```
+
+## Discrete Example (Bernoulli(1/4) with Uniform(0..1))
+
+```{julia}
+distribution = Dists.Bernoulli(1/4)
+
+bernoulli_pmf(x) = begin
+   if x == 0
+      3/4
+   elseif x == 1
+      1/4
+   else
+      0
+   end
+end
+
+uniform_pmf(x) = begin
+   if x == 0
+      1/2
+   elseif x == 1
+      1/2
+   else
+      0
+   end
+end
+
+generator = RejectionSamplingGenerator(
+   bernoulli_pmf, uniform_pmf, () -> rand([0, 1]), 3/2
+)
+test = test_generator(distribution, generator)
+display(test.plots); display(test.statistics)
+```
+
 # The Ziggurat Method
 
 ## Peculiarities
