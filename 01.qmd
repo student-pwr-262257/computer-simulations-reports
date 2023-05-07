@@ -150,12 +150,30 @@ function test_generator(distribution, generator, sample_size=10^3)
    Plots.xlabel!(cdf_plot, "Argument")
    Plots.ylabel!(cdf_plot, "Value")
 
-
-   pdf_plot = Plots.histogram(sample, normalize=true, label="Histogram")
-   StatsPlots.plot!(x -> Dists.pdf(distribution, x), label="Theoretic density")
-   Plots.title!(pdf_plot, "Probability density function")
-   Plots.xlabel!(pdf_plot, "Argument")
-   Plots.ylabel!(pdf_plot, "Probability density")
+   if distribution isa Dists.DiscreteDistribution
+      proportion_map = StatsBase.proportionmap(sample)
+      plot_points = unique(sample)
+      epmf(x) = proportion_map[x]
+      pdf_plot = StatsPlots.groupedbar(
+         plot_points,
+         [epmf.(plot_points) (x -> Dists.pdf(distribution, x)).(plot_points)],
+         labels=["Empirical PMF" "Theoretic PMF"]
+      )
+      Plots.title!(pdf_plot, "Probability Mass Function")
+      Plots.xlabel!(pdf_plot, "Argument")
+      Plots.xticks!(plot_points)
+      Plots.ylabel!(pdf_plot, "Probability")
+   elseif distribution isa Dists.ContinuousDistribution
+      pdf_plot = Plots.histogram(sample, normalize=true, label="Histogram")
+      StatsPlots.plot!(
+         x -> Dists.pdf(distribution, x), label="Theoretic density"
+      )
+      Plots.title!(pdf_plot, "Probability density function")
+      Plots.xlabel!(pdf_plot, "Argument")
+      Plots.ylabel!(pdf_plot, "Probability density")
+   else
+      error("distribution of a mixed type is not allowed")
+   end
 
    qq_plot = StatsPlots.qqplot(distribution, sample)
    Plots.title!(qq_plot, "Quantile-Quantile")
