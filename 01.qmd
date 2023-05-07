@@ -15,6 +15,7 @@ authors:
     city: Wrocław
 
 callout-appearance: simple
+jupyter: julia-1.9
 ---
 
 # Statistics
@@ -145,8 +146,10 @@ function test_generator(distribution, generator, sample_size=10^3)
    test_statistics = GeneratorTestStatisticsError(distribution, sample)
    sample_ecdf = StatsBase.ecdf(sample)
    cdf_plot = StatsPlots.plot(sample_ecdf, label="Empirical CDF")
-   Plots.plot!(cdf_plot, x -> Dists.cdf(distribution, x), label="Theoretic CDF")
-   Plots.title!(cdf_plot, "Cumulative distribution function")
+   Plots.plot!(
+      cdf_plot, x -> Dists.cdf(distribution, x), label="Theoretic CDF"
+   )
+   Plots.title!(cdf_plot, "Cumulative Distribution Function")
    Plots.xlabel!(cdf_plot, "Argument")
    Plots.ylabel!(cdf_plot, "Value")
 
@@ -482,7 +485,10 @@ function ParetoGenerator(shape, scale)
                return x + scale
             end
          end
-         if rand() * (pdf(step_points[i-1]) - pdf(step_points[i])) < pdf(x) - pdf(step_points[i])
+         if rand() * (
+            pdf(step_points[i-1]) - pdf(step_points[i])) <
+               pdf(x) - pdf(step_points[i]
+         )
             return x + scale
          end
       end
