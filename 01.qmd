@@ -185,6 +185,34 @@ function test_generator(distribution, generator, sample_size=10^3)
 end
 ```
 
+# Inverse Transform Sampling
+
+```{julia}
+function InverseTransformSamplingGenerator(quantile)
+   () -> begin
+      u = rand()
+      quantile(u)
+   end
+end
+```
+
+## Continuous Example (Weibull(2, 1))
+```{julia}
+distribution = Dists.Weibull(2)
+generator = InverseTransformSamplingGenerator(x -> (-log(1 - x))^(1/2))
+test = test_generator(distribution, generator)
+display(test.plots); display(test.statistics)
+```
+
+## Discrete Example (Bernoulli(1/2))
+```{julia}
+distribution = Dists.Bernoulli(1/2)
+bernoulli_quantile(x) = x <= 1/2 ? 0 : 1
+generator = InverseTransformSamplingGenerator(bernoulli_quantile)
+test = test_generator(distribution, generator)
+display(test.plots); display(test.statistics)
+```
+
 # The Ziggurat Method
 
 ## Peculiarities
