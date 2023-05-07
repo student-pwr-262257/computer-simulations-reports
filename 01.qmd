@@ -273,6 +273,103 @@ test = test_generator(distribution, generator)
 display(test.plots); display(test.statistics)
 ```
 
+# Normal distribution generation methods
+
+## Box-Muller transform
+
+```{julia}
+function BoxMullerGenerator(μ=0, σ²=1)
+   σ = sqrt(σ²)
+   () -> begin
+      u₁, u₂ = rand(2)
+      z₁, z₂ = sqrt(-2 * log(u₁)) * cos(2π * u₂), sqrt(-2 * log(u₁)) *
+         sin(2π * u₂)
+      [σ * z₁ + μ, σ * z₂ + μ]
+   end
+end
+```
+
+## Polar method
+
+```{julia}
+function PolarMethod(μ=0, σ²=1)
+   σ = sqrt(σ²)
+   () -> begin
+      while true
+         u₁, u₂ = 2 .* rand(2) .- 1
+         R² = u₁^2 + u₂^2
+         if R² <= 1
+            z₁, z₂ = sqrt(-2 * log(R²) / R²) * u₁, sqrt(-2 * log(R²) / R²) * u₂
+            return [σ * z₁ + μ, σ * z₂ + μ]
+         end
+      end
+   end
+end
+```
+
+## Rejection sampling
+
+```{julia}
+normal_pdf(x) = 1/2π * exp(-x^2/2)
+laplace_pdf(x) = 1/2 * exp(-abs(x))
+exponential_quantile(x) = -log(1 - x)
+laplace_generator = ComposedFunction(
+   x -> x * rand([-1, 1]),
+   InverseTransformSamplingGenerator(exponential_quantile),
+)
+normal_rejection_sampling_generator = RejectionSamplingGenerator(
+   normal_pdf,
+   laplace_pdf,
+   laplace_generator,
+   20
+)
+```
+
+## Benchmarks
+
+```{julia}
+import BenchmarkTools as BT
+import DataFrames as DF
+using LaTeXStrings
+
+exponents = 1:4
+sample_sizes = [10^i for i in exponents]
+generators = [
+   BoxMullerGenerator(), PolarMethod(), normal_rejection_sampling_generator
+]
+results = Array{Any}(undef, (length(generators), length(sample_sizes)))
+
+results = map(Base.Iterators.product(exponents, 1:3)) do (i, j)
+   result = BT.@benchmark [$generators[$j]() for _ in 1:$sample_sizes[$i]]
+   result.times
+end
+
+median_results = map(Stats.median, results)
+
+the_plots = map(exponents) do exponent
+   p = StatsPlots.groupedbar(
+      median_results[exponent, :],
+      group=["Box-Muller", "Polar", "Rejection"],
+      legend=:none,
+   )
+   Plots.title!(p, L"Sample size $10^%$exponent$")
+   Plots.ylabel!(p, "Time")
+   Plots.xticks!(p, [0])
+end
+legend = Plots.plot(
+   [0 0 0],
+   showaxis = false,
+   grid = false,
+   label=["Box-Muller" "Polar" "Rejection"]
+)
+p = Plots.plot(
+      the_plots...,
+      legend,
+      legend_title="Median",
+      layout=Plots.@layout [Plots.grid(2, 2) l{0.2w}]
+   )
+```
+
 # The Ziggurat Method
 
 ## Peculiarities
