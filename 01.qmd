@@ -567,7 +567,7 @@ normal_rejection_sampling_generator = RejectionSamplingGenerator(
    normal_pdf,
    laplace_pdf,
    laplace_generator,
-   20
+   1/π,
 )
 ```
 
@@ -579,14 +579,7 @@ rejection sampling. Performance tests are conducted for each method and
 sample size, and the results are stored in an array. The median execution
 times for each method and sample size have been computed. In the summary,
 plots are generated to depict the performance of the methods based on the
-sample size. <br> <br> Analyzing the graphs presented in the benchmark, it
-can be observed that for each of the four sample sizes, the rejection
-sampling method has the longest execution time. The differences between the
-polar method and the Box-Muller method are small and do not increase with
-the increase in sample size. With these two methods, the execution time
-slightly increases with the increase in the sample size. However, the
-execution time of rejection sampling increases proportionally with the
-increase in the sample size.
+sample size.
 
 ```{julia}
 import BenchmarkTools as BT
@@ -606,6 +599,8 @@ results = map(Base.Iterators.product(exponents, 1:3)) do (i, j)
 end
 
 median_results = map(Stats.median, results)
+# Box-Muller and PolarMethod generate 2 samples, so we divide the times
+median_results[:, 1:2] .= median_results[:, 1:2] ./ 2
 
 the_plots = map(exponents) do exponent
    p = StatsPlots.groupedbar(
