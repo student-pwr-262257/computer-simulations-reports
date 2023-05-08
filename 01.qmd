@@ -79,6 +79,8 @@ import Plots
 import StatsPlots
 import Distributions as Dists
 
+Plots.default(size=(800, 530))
+
 struct GeneratorTestStatisticsError
    distribution
    mean
