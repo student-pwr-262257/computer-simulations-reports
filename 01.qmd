@@ -555,6 +555,16 @@ distribution. Therefore, the ratio of the maximum value of the probability
 density function to the auxiliary probability density function is
 different.
 
+Having the pdf of Normal distribution as $f$ and the Laplace distribution's
+density as $g$, we have that
+
+$$
+\frac {f(x)} {g(x)} = \frac {e^{x^2 + |x|}} \pi.
+$$
+
+This function is strictly decreasing, so the supremum of its values is in
+$0$. Therefore, the optimal constant is $e^0 / \pi = 1/\pi$.
+
 ```{julia}
 normal_pdf(x) = 1/2π * exp(-x^2/2)
 laplace_pdf(x) = 1/2 * exp(-abs(x))
