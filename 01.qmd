@@ -190,6 +190,85 @@ end
 
 # Inverse Transform Sampling
 
+Inverse Transform Sampling (ITS) is one of the most fundamental techniques
+for generating samples from a specified probability distribution based on
+samples from a uniform distribution. <br> The cumulative distribution
+function of a given probability distribution is a function $F: R
+\rightarrow R$. The cumulative distribution function uniquely defines the
+probability distribution. If the inverse function to the cumulative
+distribution function (CDF), denoted as $F^{-1}(x)$, exists, and a random
+variable $U$ follows the distribution $F(x)$, then the random variable $X$
+defined as $X = F^{-1}(U)$ follows a distribution with the CDF $F(x)$. In
+this method, the generalized quantile is also sufficient. Inversion cannot
+be used in the discrete case. In that case, the inverse function of the
+cumulative distribution does not exist. We have: $$\mathbb P (X \leq x) =
+\mathbb P(F^{-1}(U) \leq x) = \mathbb P (U \leq F(x)) = F(x).$$  A sequence
+of pseudorandom numbers is generated: $U_1, U_2, \dots, U_n \in (0,1)$,
+which is then transformed into a sequence $X_1, X_2, \dots, X_n \in
+(-\infty, \infty)$. The numbers $X_i$ have a probability distribution with
+the cumulative distribution function F. The inversion of the cumulative
+distribution function can also be used in the case of discrete probability
+distributions with probabilities $p_k = \mathbb P (X = k)$, where $k =
+0,1,2, \dots$, which can be generated using the sequence $U_i$ according to
+the formula:  $$X_n = min \{ k: U_n \leq \sum\limits_{i=0}^k p_i\}, \quad n
+= 1, 2, 3, \dots$$ Below code demonstrates an example of using the Inverse
+Transform Sampling (ITS) method to generate samples from a continuous
+distribution, specifically the Weibull $\mathcal{We}(2,1)$ distribution
+with shape parameter 2 and scale parameter 1. The generator takes a
+function as an argument, which in this case is an anonymous function that
+applies the inverse transformation formula for the Weibull distribution:
+$\sqrt{-\log(1 - x)}$. This function maps values from a uniform
+distribution (generated internally) to values from the Weibull
+distribution.  Since the uniform distribution has a constant density of 1
+on the interval (0,1), the ratio simplifies to $\frac{p(x)}{q(x)} =
+p(x)$. To find the maximum value of $p(x)$, we can examine the derivative:
+$\frac{dp(x)}{dx} = 2(1-x^2)e^{-x^2} - 4x^2 e^{-x^2}$. Setting the
+derivative equal to zero, simplifying further and solving for $x^2$, we
+get: $x^2 = \frac 13$, so $x = \sqrt{\frac 13}$. Therefore, the maximum
+value of $p(x)$ occurs at $x = \sqrt{\frac{1}{3}}$. Substituting this value
+back into the density function, we can calculate the maximum ratio:
+$\frac{p(x)}{q(x)} = p(\sqrt{\frac 13}) = 2 \sqrt{\frac 13 e^{(-\frac
+13)^2}} =  2 \sqrt{\frac 13 e^{- \frac 13}}$. Hence, the constant $c$ for
+the Weibull $(2,1)$ distribution with Uniform $(0,1)$ is
+$2\sqrt{\frac{1}{3}}e^{-\frac{1}{3}}$.<br> The following plots represent
+the following: the cumulative distribution function, where the Empirical
+CDF is depicted in blue and the Theoretical CDF in red. It can be observed
+that both curves largely overlap, indicating a correctly implemented
+algorithm. The next plot is the Probability Density Function, which shows a
+histogram and the theoretical density. The last of the plots is the
+QQ-plot, also known as the Quantile-Quantile plot. The empirical quantiles
+are plotted on the Y-axis, while the theoretical quantiles are described on
+the X-axis. Below, in the table, basic descriptive statistics such as mean,
+variance, skewness, and kurtosis are presented for both absolute error and
+theoretical error. <br> Next code demonstrates an example of using the
+inverse transform sampling method to generate samples from a discrete
+distribution, specifically the Bernoulli $\mathcal B(\frac12)$ distribution
+with a success probability of $\frac12$. This distribution represents a
+binary random variable that takes either the value 0 or 1. If the input
+value x is less than or equal to 1/2, the function returns 0; otherwise, it
+returns 1. This function serves as the inverse of the cumulative
+distribution function for the Bernoulli distribution. This generator
+applies the inverse transformation defined by bernoulli_quantile to map
+values from a uniform distribution to values from the Bernoulli
+distribution. Just as with the presentation of results for the continuous
+probability distribution, the results for the discrete probability
+distribution version are also presented in the form of three plots. Just
+like in the previous calculation, the Bernoulli(1/2) distribution has a
+constant $c = \frac 12$.<br> The Cumulative Distribution Function plot
+shows that the empirical CDF and the theoretical CDF are very close to each
+other. The only significant difference is that the theoretical CDF starts
+from the point (0, 0.5), while the empirical CDF starts from the initial
+point (0, 0). As the curves progress, we observe slight differences. The
+next plot represents the Probability Mass Function, comparing the empirical
+PMF with the theoretical PMF. It can be noticed that the probability values
+are close to each other, with differences not exceeding 0.1. The last plot
+is the Quantile-Quantile Plot, which exhibits a linear character. It
+behaves almost like the line y=x. Below the plots, a table is presented,
+showing basic descriptive statistics such as mean, variance, skewness, and
+kurtosis. It can be observed that the absolute error for the theoretical
+value in each row of the table is significantly small, indicating an
+acceptable level of error.
+
 ```{julia}
 function InverseTransformSamplingGenerator(quantile)
    () -> begin
@@ -217,6 +296,105 @@ display(test.plots); display(test.statistics)
 ```
 
 # Rejection sampling
+
+First, consider the case for a continuous probability distribution: Let $X$
+be a random variable with density $f$. The function $F$ is continuous and
+only takes positive values on $[a,b]$ except for 0. Since continuity holds,
+we can determine the maximum. Executing the algorithm involves generating a
+random variable $X$ with density $f$. A random variable $Y$ is efficiently
+generated with density $g$. Importantly, $Y$ should take values from the
+same set as $X$. The constant $c$ is determined such that: $$\sup\limits_{x
+\in \mathbb R} \frac{f(x)}{g(x)} \leq c \leq \infty.$$ The constant $c$ is
+optimally determined when the supremum is equal to a constant $c$. In
+rejection sampling, the constant $c$ can be described as the acceptance
+constant. The choice of the constant $c$ is crucial in achieving an optimal
+value between the efficiency of the sampling algorithm and the accuracy of
+the generated samples. If $U \leq \frac{f(Y)}{c \cdot g(Y)},$then $X$ is
+returned as $Y$. If not, another $Y$ will be generated again. <br> In the
+example below, the distribution Semicircle$(1)$ with Uniform$(-1,1)$ is
+presented, and two probability density functions (PDFs), semicircle_pdf and
+uniform_pdf, are defined. When the range of $x$ extends beyond $[-1,1]$,
+the PDF value is set to 0. The generator is tested by calling the
+test_generator function. To find the constant $c$ for the Semicircle$(1)$
+distribution with Uniform$(-1,1)$, we need to determine the value of $c$
+that satisfies the condition: $\sup_{x \in \mathbb R} \frac{f(x)}{g(x)}
+\leq c \leq \infty$, The probability density function (PDF) for the
+Semicircle(1) distribution is given by: $f(x) = (\frac 2pi) *\ sqrt(1 -
+x^2)$  for $-1 \leq  x \leq 1$, and 0 elsewhere. The PDF for the
+Uniform$(-1,1)$ distribution is constant and given by: $g(x) = \frac 12$
+for $-1 \leq x \leq 1$, and 0 elsewhere. To find the maximum ratio, we
+evaluate it at the critical points of the Semicircle(1) distribution, which
+are $x = -1$ and $x = 1$: $\frac{f(-1)}{g(-1)} = (\frac 2/pi) * \sqrt(1 -
+(-1)^2)) / (\frac 12) = (\frac 2 \pi) * \sqrt 1 = \frac 2\pi, \
+\frac{f(1)}{g(1)}= ((\frac 2 \pi) *\frac{ \sqrt(1 - 1^2)) }{(\frac 12)} =
+0. Therefore, the supremum of the ratio is \frac 2 \pi.
+
+Hence, the constant $c$ for the Semicircle(1) distribution with
+Uniform(-1,1) is\frac 2\pi. <br> The case for a discrete probability
+distribution: Let CDF, $F$ for $X$: $$F(x) = \sum\limits_{i \leq j}
+p(x_i).$$ Discrete random variables can be generated by slicing up the
+interval $(0, 1)$ into subintervals which define a partition of $(0, 1)$:
+$$(0, F(x_1)),(F(x_2), F(x_3)), \dots, (F(x_{k-1}), 1).$$ Generating random
+variables U from a uniform distribution on the interval (0, 1) and
+determining the subinterval into which U falls. A realization of a discrete
+random variable X is generated according to the given formula: $$\mathbb{P}
+(X = i) = p_i, \ i = 1,2,\dots, n.$$ It is possible to generate another
+random variable Y with a distribution defined by the formula: $$\mathbb{P}
+(Y = i) = q_i, \ i = 1,2, \dots, n.$$ Then, a random variable $U$ is
+generated from the uniform distribution $\mathcal U(0,1)$, such that $U$ is
+independent of $Y$. If $U$ is evaluated to satisfy the condition $U \leq
+\frac{pY}{c \cdot q_y}$, where $c = \max\limits_i \frac{p_i}{q_i}$, then
+$X$ is set to be equal to $Y$. Otherwise, we go back to the beginning of
+the algorithm and generate $Y$ again. <br>
+
+In the example below, rejection sampling is used for a discrete probability
+distribution. The Bernoulli distribution $\mathcal{Be}(\frac 14)$ with
+Uniform(0,1) is chosen. In the code, two probability mass functions (PMF)
+are defined: bernoulli_pmf and uniform_pmf. The bernoulli_pmf(x) function
+returns the PMF value based on the input x: $\frac 34$, $\frac 14$, and
+zero for $x=0$, $x=1$, and any other value respectively. Similarly, the
+uniform_pmf(x) function returns the PMF value based on the input x: $\frac
+12$ for $x=0$ or $x=1$, and zero for any other value. Then, the generator
+is tested by calling the test_generator function. To find the maximum
+ratio, we compare the ratios $\frac{p_i}{q_i}$ for each outcome:
+$\frac{\frac{3}{4}}{\frac{1}{2}} =
+\frac{3}{2}$,$\frac{\frac{1}{4}}{\frac{1}{2}} = \frac{1}{2}$The maximum
+ratio is $\frac{3}{2}$. Therefore, the constant $c$ for the Bernoulli
+distribution with parameter $\frac{1}{4}$ and Uniform(0,1) is
+$\frac{3}{2}$.<br>
+
+Analyzing the generated graphs below, one can assess how well the random
+data generator reflects the expected distributions. The closer the
+empirical graphs are to the theoretical ones, the more accurate and
+reliable the generator is.
+
+Cumulative Distribution Function (CDF) graph shows the comparison between
+the empirical cumulative distribution function, calculated based on the
+generated sample, and the theoretical cumulative distribution function for
+the given distribution. The closer the empirical curve aligns with the
+theoretical curve, the better the generator reflects the expected
+distribution.
+
+Probability Density Function (PDF) graph  presents a comparison between the
+normalized histogram of the generated sample and the theoretical
+probability density function for the given distribution. The closer the
+histogram resembles the theoretical density function, the better the
+generator reflects the probability distribution.
+
+Quantile-Quantile (QQ) graph compares the empirical quantiles, calculated
+based on the generated sample, with the theoretical quantiles for the given
+distribution. If the points on the graph lie along a straight line, it
+indicates that the generated data follows a distribution similar to the
+theoretical one.
+
+Probability Mass Function (PMF) graph illustrates the comparison between
+two types of bars: empirical PMF and theoretical PMF. The height of each
+blue bar corresponds to the estimated probability of a particular outcome
+occurring in the sample, while the red bar represents the theoretical PMF
+values for the given probability distribution. We observe slight
+differences in the heights of the blue and red bars, indicating that the
+function has been constructed correctly, meaning that the designed
+generator reflects the probability distribution accurately.
 
 ```{julia}
 function RejectionSamplingGenerator(pdf, aux_pdf, aux_gen, multiplier)
@@ -278,7 +456,43 @@ display(test.plots); display(test.statistics)
 
 # Normal distribution generation methods
 
+In this section of the report, we will explore different methods for
+generating random numbers from a normal distribution. The normal
+distribution is a widely used probability distribution in various fields -
+for example statistical analysis. Generating random (pseudo-random) numbers
+from a normal distribution is essential in many computer simulations. We
+will focus on three commonly employed methods for generating random numbers
+from a normal distribution: the Box-Muller transform, the Polar method and
+rejection sampling. The last subsection is benchmark.
+
 ## Box-Muller transform
+
+The Box-Muller transform is a classic method that transforms uniformly
+distributed random numbers into independent and identically distributed
+$(i.i.d)$ standard normal random numbers. It is based on the trigonometric
+functions. <br> The algorithm is as follows: We generate two random
+variables, $U_1 \sim \mathcal U (0,1)$ and $U_2 \sim \mathcal U(0,1)$, such
+that $U_1$ and $U_2$ are independent. Then, we define $R = \sqrt{-2
+\log(U_1)}$ and $\Phi = 2\pi U_2$. Next, the random variables $X$ and $Y$
+are represented in polar form as $X = R \cos(\Phi)$ and $Y = R
+\sin(\Phi)$. Therefore, they can be expressed as $X = \sqrt{-2 \log(U_1)}
+\cos (2\pi U_2) $ and $Y = \sqrt{-2 \log(U_1)} \sin (2\pi U_2)$. This
+implies that $U_1 = e^{-(X^2 + Y^2)/2}$ and $U_2 = \frac{1}{2\pi} \arctan
+(\frac XY)$. By calculating the Jacobian matrix equal, we obtain the joint
+probability density function as follows: $$f_{X,Y}(x,y) =
+\frac{1}{\sqrt{2\pi}} e^{-\frac{x^2}{2}} \cdot \frac{1}{\sqrt{2\pi}}
+e^{-\frac{y^2}{2}}.$$ Recall that $$f_{X,Y} (x,y) = f_{X}(x) \cdot f_Y (y)
+\Leftrightarrow X \perp Y.$$  Therefore, we conclude that $X \perp Y$, with
+$X$ following a standard normal distribution $\mathcal N (0,1)$ and $Y$
+following a standard normal distribution $\mathcal N (0,1)$. <br> The
+function takes two optional arguments, mu and sigma, representing the mean
+and standard deviation of the desired normal distribution,
+respectively. The default values in function are $mu=0$ and
+$sigma=1$. Next, the Box-Muller transform is applied to generate two
+independent standard normal random variables The transformation involves
+taking $\sqrt{-2 \cdot \log(u)} \cdot$ and multiplying it by $\cos(2\pi v$)
+and $\sin(2 \pi v)$ respectively. These calculations generate two standard
+normal random variables. <br>
 
 ```{julia}
 function BoxMullerGenerator(μ=0, σ²=1)
@@ -293,6 +507,19 @@ end
 ```
 
 ## Polar method
+
+The Polar method generates pairs of normally distributed random numbers
+using the transformation of uniform random variables. It employs the
+rejection technique to ensure efficiency and accuracy in generating random
+numbers. <br> PolarMethod function is generating random variables from a
+normal distribution. It takes two arguments: the mean and the variance. In
+each iteration, two independent random variables are generated from a
+uniform distribution in the range $[-1, 1]$. The squared distance $R^2$,
+from the origin to the point defined by these two generated random
+variables is calculated. The algorithm generates new samples as long as the
+condition $R^2 \leq 1$ is satisfied. As a result, the function generates
+pairs of random variables following a normal distribution with parameters
+$\mu$ and $\sigma^2$.
 
 ```{julia}
 function PolarMethod(μ=0, σ²=1)
@@ -312,6 +539,22 @@ end
 
 ## Rejection sampling
 
+Rejection sampling is a versatile method for generating random numbers from
+various distributions, including the normal distribution. This method was
+described in the previous section with two examples: a continuous example
+using the Semicircle$(1)$ distribution with Uniform$(-1,1)$, and a discrete
+example using the Bernoulli$(\frac 14)$ distribution with
+Uniform$(0,1)$. In this section, we will focus on the application of
+rejection sampling for generating random numbers from a normal
+distribution, which is a continuous probability distribution. <br> The
+difference between this example and the one generating from the
+Semicircle$(1)$ with Uniform$(-1,1)$ is the auxiliary distribution used for
+generating random variables. In the case of rejection sampling for the
+normal distribution, the auxiliary distribution is the exponential
+distribution. Therefore, the ratio of the maximum value of the probability
+density function to the auxiliary probability density function is
+different.
+
 ```{julia}
 normal_pdf(x) = 1/2π * exp(-x^2/2)
 laplace_pdf(x) = 1/2 * exp(-abs(x))
@@ -329,6 +572,21 @@ normal_rejection_sampling_generator = RejectionSamplingGenerator(
 ```
 
 ## Benchmarks
+
+The benchmark aims to compare the performance of three methods for
+generating random variables: Box-Muller transform, Polar method, and
+rejection sampling. Performance tests are conducted for each method and
+sample size, and the results are stored in an array. The median execution
+times for each method and sample size have been computed. In the summary,
+plots are generated to depict the performance of the methods based on the
+sample size. <br> <br> Analyzing the graphs presented in the benchmark, it
+can be observed that for each of the four sample sizes, the rejection
+sampling method has the longest execution time. The differences between the
+polar method and the Box-Muller method are small and do not increase with
+the increase in sample size. With these two methods, the execution time
+slightly increases with the increase in the sample size. However, the
+execution time of rejection sampling increases proportionally with the
+increase in the sample size.
 
 ```{julia}
 import BenchmarkTools as BT
@@ -374,6 +632,41 @@ p = Plots.plot(
 ```
 
 # The Ziggurat Method
+
+To perform the Ziggurat method, it was necessary to import the find_zero
+function from the Roots library. The ParetoGenerator function is
+responsible for generating a Pareto distribution using the Ziggurat
+method. This function takes parameters that describe the shape and scale of
+the distribution. Next, the structure of the Ziggurat for the generator is
+created, which can be seen as points that assist in generating the Pareto
+distribution. The values of these points are calculated. To successfully
+carry out the algorithm, the probability density function, the inverse
+function of the density function, the tail of the distribution, and the
+quantile of the distribution are utilized.
+
+The Ziggurat algorithm is  an efficient alternative to other algorithms
+like the Box-Muller transform. The key idea is to generate random numbers
+by selecting a strip and a position within that strip. First, we need to
+calculate the heights and areas of each strip in the ziggurat structure
+based on the PDF of the target distribution. Next step is  selecting  a
+random strip and a position within that strip. The position is chosen
+uniformly within the strip's boundaries. Accept or reject  step about
+compare the generated position with the corresponding PDF value. If the
+position is below the PDF value, accept it as a random number from the
+distribution. Otherwise, reject it and repeat the process. After the
+algorithm is executed, a test of the generator from the Pareto distribution
+with parameters 5 and 1 is performed. Samples from the actual distribution
+and samples from the implemented generator are generated. Finally, three
+comparative plots are presented. The first plot shows the empirical
+cumulative distribution function (CDF) compared to the theoretical CDF. It
+can be observed that the closer the curves are to each other, the better
+the generator replicates the distribution. The second plot displays the
+probability density function (PDF), which represents the normalized
+histogram of the generated sample along with the theoretical PDF of the
+Pareto distribution. The histogram accurately reflects the theoretical
+density values. The last plot is the QQ-plot, which compares the empirical
+quantiles calculated based on the generated sample. The generated data
+follows a distribution similar to the theoretical Pareto distribution.
 
 ## Peculiarities
 
